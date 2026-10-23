@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#142b3b">
+<title>SmartLevel - Mobile Inclinometer</title>
+<style>
+:root{--bg:#f3f7fa;--card:#fff;--ink:#142b3b;--muted:#607482;--teal:#087f72;--line:#dce6eb;--red:#b45309}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:720px;margin:auto;padding:18px 15px 32px}
+header{background:linear-gradient(135deg,#142b3b,#24566a);color:white;padding:23px 20px;border-radius:20px;margin-bottom:14px}
+header h1{margin:0;font-size:1.8rem} header p{margin:5px 0 0;color:#d1e4ec;font-size:.95rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 3px 12px #142b3b0a}
+.row{display:flex;gap:12px}.metric{flex:1;background:#f0f7f7;border-radius:12px;padding:13px}
+.label{font-size:.84rem;color:var(--muted)}.value{font-size:2rem;font-weight:750;letter-spacing:-.04em;margin-top:3px}
+.status{font-weight:700;color:var(--teal);margin:8px 0 0}
+.gauge{height:170px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.gauge svg{width:170px;height:170px;max-width:100%}
+button{border:0;border-radius:11px;padding:13px 15px;font:inherit;font-weight:700;cursor:pointer}
+.primary{background:var(--teal);color:white}.secondary{background:#e7eff3;color:var(--ink)}.danger{background:#fff0ed;color:#9a3412}
+.buttons{display:flex;gap:8px;flex-wrap:wrap}.buttons button{flex:1;min-width:100px}
+canvas{width:100%;height:180px;display:block}
+.small{font-size:.82rem;color:var(--muted);line-height:1.5}
+.notice{background:#fff7e8;border:1px solid #f4d7a2;border-radius:12px;padding:12px;color:#754c0e;font-size:.9rem;line-height:1.5}
+table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
+footer{text-align:center;color:var(--muted);font-size:.78rem;padding:12px}
+@media(min-width:560px){main{padding-top:28px}.value{font-size:2.25rem}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>SmartLevel</h1><p>Mobile surface-tilt meter · Live phone sensor readings</p></header>
+
+<section class="card">
+  <div class="row">
+    <div class="metric"><div class="label">Front ↔ Back (β)</div><div class="value" id="beta">--.-°</div></div>
+    <div class="metric"><div class="label">Left ↔ Right (γ)</div><div class="value" id="gamma">--.-°</div></div>
+  </div>
+  <p class="status" id="status">Sensor not started</p>
+  <p class="small" id="hint">Tap Start sensors and allow motion/orientation access if asked.</p>
+</section>
+
+<section class="card">
+  <h2 style="margin:0;font-size:1.1rem">Visual level indicator</h2>
+  <div class="gauge">
+    <svg viewBox="0 0 170 170" role="img" aria-label="Circular tilt indicator">
+      <circle cx="85" cy="85" r="68" fill="#f3f8fa" stroke="#c9dbe2" stroke-width="2"/>
+      <circle cx="85" cy="85" r="48" fill="none" stroke="#d5e3e8" stroke-dasharray="3 5"/>
+      <path d="M85 20 V150 M20 85 H150" stroke="#9fb7c2" stroke-width="1.5"/>
+      <circle cx="85" cy="85" r="8" fill="#fff" stroke="#7897a4" stroke-width="2"/>
+      <g id="bubble" transform="translate(85 85)"><circle r="15" fill="#0d9488" stroke="#ffffff" stroke-width="3"/><circle cx="-4" cy="-4" r="4" fill="#baf4eb"/></g>
+    </svg>
+  </div>
+  <p id="levelText" class="status" style="text-align:center">Waiting for readings</p>
+  <p class="small">The dot moves as the phone tilts. Keep the phone flat against the object you are checking. This visual is an aid, not a calibrated precision instrument.</p>
+</section>
+
+<section class="card">
+  <h2 style="margin:0;font-size:1.1rem">Tilt history</h2>
+  <p class="small">Absolute tilt magnitude over time (degrees). Recording starts when sensors start.</p>
+  <canvas id="chart" width="640" height="240" aria-label="Line chart of tilt over time"></canvas>
+  <div class="row"><div class="metric"><div class="label">Samples recorded</div><div class="value" id="samples" style="font-size:1.5rem">0</div></div><div class="metric"><div class="label">Average tilt</div><div class="value" id="average" style="font-size:1.5rem">--.-°</div></div></div>
+</section>
+
+<section class="card">
+  <div class="buttons">
+    <button class="primary" id="start">Start sensors</button>
+    <button class="secondary" id="stop" disabled>Stop</button>
+    <button class="danger" id="reset">Reset data</button>
+  </div>
+  <p class="small" style="margin-bottom:0">For best results, use a modern phone browser. Sensor access may require HTTPS and permission. If no readings appear, try opening the page in Chrome or Safari on your phone.</p>
+</section>
+
+<section class="card">
+  <h2 style="margin:0 0 8px;font-size:1.1rem">How this helps</h2>
+  <p style="margin:0;line-height:1.55">SmartLevel can help check the approximate tilt of a shelf, tabletop, ramp, or equipment surface. Place the phone steadily on the surface and compare its angle before and after adjustment.</p>
+</section>
+<div class="notice"><strong>Measurement note:</strong> this app reports device orientation angles supplied by the phone/browser. Sensor conventions and accuracy vary by device, and the readings are not a substitute for a calibrated engineering instrument.</div>
+<footer>SmartLevel · Single-file mobile web app · No data is uploaded</footer>
+</main>
+<script>
+(() => {
+ const betaEl=document.getElementById('beta'), gammaEl=document.getElementById('gamma');
+ const statusEl=document.getElementById('status'), hintEl=document.getElementById('hint');
+ const levelText=document.getElementById('levelText'), bubble=document.getElementById('bubble');
+ const samplesEl=document.getElementById('samples'), averageEl=document.getElementById('average');
+ const startBtn=document.getElementById('start'), stopBtn=document.getElementById('stop');
+ const canvas=document.getElementById('chart'), ctx=canvas.getContext('2d');
+ let running=false, data=[], lastSample=0, latest={beta:null,gamma:null}, listener=null;
+ function drawChart(){
+   const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+   const pad={l:42,r:12,t:14,b:28}, pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+   ctx.font='12px system-ui'; ctx.lineWidth=1; ctx.strokeStyle='#dce6eb'; ctx.fillStyle='#607482';
+   for(let i=0;i<=4;i++){let y=pad.t+ph*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillText(String(20-i*5),5,y+4);}
+   ctx.fillText('Recent samples →',w-120,h-5);
+   if(data.length<1){ctx.fillStyle='#607482';ctx.fillText('Start sensors to collect measurements',pad.l+10,h/2);return;}
+   const view=data.slice(-100), maxY=20;
+   ctx.strokeStyle='#087f72';ctx.lineWidth=3;ctx.lineJoin='round';ctx.beginPath();
+   view.forEach((d,i)=>{const x=pad.l+(view.length===1?0:i/(view.length-1))*pw;const y=pad.t+ph-(Math.min(maxY,d.mag)/maxY)*ph;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+ }
+ function updateStats(){
+   samplesEl.textContent=data.length;
+   if(data.length){averageEl.textContent=(data.reduce((s,d)=>s+d.mag,0)/data.length).toFixed(1)+'°';}
+   else averageEl.textContent='--.-°';
+   drawChart();
+ }
+ function onOrientation(e){
+   if(!running)return;
+   if(typeof e.beta!=='number'||typeof e.gamma!=='number'||!Number.isFinite(e.beta)||!Number.isFinite(e.gamma)){
+     statusEl.textContent='Sensor available, but no usable angle data';
+     hintEl.textContent='Try moving the phone gently or use a different supported browser.';
+     return;
+   }
+   latest={beta:e.beta,gamma:e.gamma};
+   betaEl.textContent=(e.beta>=0?'+':'')+e.beta.toFixed(1)+'°';
+   gammaEl.textContent=(e.gamma>=0?'+':'')+e.gamma.toFixed(1)+'°';
+   // Illustrative bubble movement: scaled and clamped to keep it inside the circular guide.
+   const bx=Math.max(-45,Math.min(45,e.gamma*1.1)), by=Math.max(-45,Math.min(45,e.beta*0.7));
+   bubble.setAttribute('transform',`translate(${85+bx} ${85+by})`);
+   const mag=Math.sqrt(e.beta*e.beta+e.gamma*e.gamma);
+   levelText.textContent=mag<2?'Approximately level':mag<7?'Slightly tilted':'Tilt detected: adjust surface';
+   levelText.style.color=mag<2?'#087f72':mag<7?'#a16207':'#b45309';
+   statusEl.textContent='Live sensor readings active';
+   hintEl.textContent='Place the phone on a surface and watch the angles change.';
+   const now=Date.now();
+   if(now-lastSample>=250){data.push({t:now,beta:e.beta,gamma:e.gamma,mag:mag});if(data.length>600)data.shift();lastSample=now;updateStats();}
+ }
+ async function start(){
+   if(running)return;
+   if(!('DeviceOrientationEvent' in window)){
+     statusEl.textContent='Orientation sensors are not supported in this browser';
+     hintEl.textContent='Open this page on a mobile phone using a modern browser.';
+     return;
+   }
+   try{
+     if(typeof DeviceOrientationEvent.requestPermission==='function'){
+       const permission=await DeviceOrientationEvent.requestPermission();
+       if(permission!=='granted'){statusEl.textContent='Sensor permission was not granted';hintEl.textContent='Allow motion/orientation access in your browser settings, then try again.';return;}
+     }
+     listener=onOrientation;
+     window.addEventListener('deviceorientation',listener,true);
+     running=true;startBtn.disabled=true;stopBtn.disabled=false;
+     statusEl.textContent='Waiting for sensor readings…';
+     hintEl.textContent='If this message stays, your browser may block sensors or the page may need HTTPS.';
+   }catch(err){
+     statusEl.textContent='Could not start sensors';
+     hintEl.textContent='Permission or browser error: '+(err.message||String(err));
+   }
+ }
+ function stop(){
+   running=false;
+   if(listener)window.removeEventListener('deviceorientation',listener,true);
+   listener=null;startBtn.disabled=false;stopBtn.disabled=true;
+   statusEl.textContent='Sensors stopped';
+   hintEl.textContent='Your collected measurements remain until you reset them.';
+ }
+ startBtn.addEventListener('click',start);
+ stopBtn.addEventListener('click',stop);
+ document.getElementById('reset').addEventListener('click',()=>{data=[];lastSample=0;updateStats();betaEl.textContent='--.-°';gammaEl.textContent='--.-°';bubble.setAttribute('transform','translate(85 85)');levelText.textContent='Waiting for readings';});
+ drawChart();
+ window.addEventListener('resize',drawChart);
+})();
+</script>
+</body>
+</html>
